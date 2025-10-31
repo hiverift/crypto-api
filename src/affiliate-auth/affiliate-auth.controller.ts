@@ -1,5 +1,6 @@
-import { Controller, Post, Body, Get, Req, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body,Put,Query, Get, Req, Param,UseGuards } from '@nestjs/common';
 import { AffiliateAuthService } from './affiliate-auth.service';
+import { CurrentUser } from 'src/common/current-user.decorator';
 
 @Controller('affiliate/auth')
 export class AffiliateAuthController {
@@ -32,4 +33,19 @@ export class AffiliateAuthController {
   getProfile(@Req() req) {
     return this.service.getProfile(req.user.sub);
   }
+
+   @Put('updateProfile/:id')
+  updateProfile(@Param() id:any, @Body() body: any) {
+    console.log(id.id,'reqyest')
+    // body can include: name, emailStatus, phone, country, whatsapp, telegram, link, description
+    return this.service.updateProfile(id.id, body);
+  }
+
+  @Put('updatePassword/:id')
+updatePassword(
+  @Param('id') userId: string,
+  @Body() body: { oldPassword: string; newPassword: string }
+) {
+  return this.service.updatePassword(userId, body.oldPassword, body.newPassword);
+}
 }
