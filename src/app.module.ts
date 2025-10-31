@@ -16,6 +16,7 @@ import { GatewaysModule } from './gateways/gateways.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
 import { AffiliateAuthModule } from './affiliate-auth/affiliate-auth.module';
 import { AdminModule } from './admin/admin.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 
 @Module({
@@ -36,6 +37,7 @@ import { AdminModule } from './admin/admin.module';
     GatewaysModule,
     AffiliateAuthModule,
     AdminModule,
+    AnalyticsModule,
    
   ],
 })

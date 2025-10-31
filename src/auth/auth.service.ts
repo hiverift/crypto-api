@@ -10,10 +10,9 @@ import { throwException } from 'src/util/errorhandling';
 export class AuthService {
   constructor(private users: UsersService, private jwt: JwtService) {}
 
-  // ----------------- REGISTER -----------------
   async register(dto: any) {
     try {
-      const u: any = await this.users.create(dto); // may throw CustomError internally
+      const u: any = await this.users.create(dto); 
       const token = await this.sign(u._id.toString(), u.email);
 
       return new CustomResponse(201, 'User registered successfully', {
@@ -25,11 +24,10 @@ export class AuthService {
     }
   }
 
-  // ----------------- LOGIN -----------------
   async login(dto: { email: string; password: string }) {
     try {
       const response: any = await this.users.findByEmail(dto.email, true); 
-      const user = response.data; // CustomResponse wraps data in `data`
+      const user = response.data; 
 
       if (!user) throw new CustomError(401, 'Invalid credentials');
 
@@ -38,7 +36,6 @@ export class AuthService {
 
       const token = await this.sign(user._id.toString(), user.email);
 
-      // remove password before returning
       if ('password' in user) delete user.password;
 
       return new CustomResponse(200, 'Login successful', {
@@ -50,7 +47,6 @@ export class AuthService {
     }
   }
 
-  // ----------------- SIGN TOKEN -----------------
   private async sign(sub: string, email: string) {
     const access_token = this.jwt.sign({ sub, email });
     return { access_token, token_type: 'Bearer' };

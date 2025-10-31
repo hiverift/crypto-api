@@ -15,7 +15,6 @@ export class AffiliateUser extends Document {
   @Prop({ default: false })
   isAdmin: boolean;
 
-  // New fields
   @Prop({ default: 'Unverified' })
   emailStatus: string;
 

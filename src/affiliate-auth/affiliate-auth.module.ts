@@ -6,7 +6,7 @@ import { AffiliateAuthService } from './affiliate-auth.service';
 import { AffiliateAuthController } from './affiliate-auth.controller';
 import { AffiliateUser, AffiliateUserSchema } from './entities/affiliate-auth.entity';
 import { Affiliate, AffiliateSchema } from 'src/affiliate/schemas/affiliate.schema';
-import { AffiliateModule } from 'src/affiliate/affiliate.module'; // ✅ Added import
+import { AffiliateModule } from 'src/affiliate/affiliate.module'; 
 
 @Module({
   imports: [

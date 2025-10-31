@@ -20,7 +20,6 @@ export class OrdersService {
     private readonly orderbook: OrderbookService
   ) {}
 
-  // ----------------- PLACE ORDER -----------------
   async place(userId: string, dto: any) {
     const [base, quote] = (dto.symbol || '').split('/');
     if (!base || !quote) throw new CustomError(400, 'Invalid symbol');

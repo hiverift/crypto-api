@@ -10,7 +10,6 @@ import { throwException } from 'src/util/errorhandling';
 export class KycService {
   constructor(@InjectModel(Kyc.name) private model: Model<Kyc>) {}
 
-  // ✅ Submit or update KYC documents
   async submit(userId: string, docs: any) {
     try {
       if (!userId || !docs) throw new CustomError(400, 'User ID and documents are required');
@@ -27,7 +26,6 @@ export class KycService {
     }
   }
 
-  // ✅ Admin approves or rejects KYC
   async adminSetStatus(id: string, status: string, notes?: string) {
     try {
       if (!id || !status) throw new CustomError(400, 'KYC ID and status are required');
@@ -50,7 +48,6 @@ export class KycService {
     }
   }
 
-  // ✅ Get KYC details for a specific user
   async getForUser(userId: string) {
     try {
       if (!userId) throw new CustomError(400, 'User ID is required');

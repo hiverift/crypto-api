@@ -9,8 +9,7 @@ export class Kyc extends Document {
   @Prop({ type: String, default: 'PENDING' })
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
 
-  // <-- explicit type here to avoid CannotDetermineTypeError
-  // Use Object for flexible structured metadata (store filenames, urls, fields, etc.)
+
   @Prop({ type: Object, default: {} })
   documents: Record<string, any>;
 

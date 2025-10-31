@@ -17,7 +17,6 @@ export class AffiliateAuthService {
     private jwt: JwtService
   ) {}
 
-  // ----------------- REGISTER AFFILIATE ACCOUNT -----------------
   async registerAffiliateAccount(name: string, email: string, password: string) {
     try {
       if (!name || !email || !password) throw new CustomError(400,'All fields required');
@@ -62,7 +61,6 @@ export class AffiliateAuthService {
     }
   }
 
-  // ----------------- REGISTER USER WITH REFERRAL -----------------
   async registerUserWithReferral(name: string, email: string, password: string, ref?: string) {
     try {
       if (!name || !email || !password) throw new CustomError(400,'All fields required');
@@ -112,7 +110,6 @@ export class AffiliateAuthService {
     }
   }
 
-  // ----------------- LOGIN -----------------
   async login(email: string, password: string) {
     try {
       const user = await this.model.findOne({ email });
@@ -141,8 +138,6 @@ export class AffiliateAuthService {
       throwException(err);
     }
   }
-
-  // ----------------- GET PROFILE -----------------
   async getProfile(userId: string) {
     try {
       const user = await this.model.findById(userId).select('-password');
@@ -153,7 +148,6 @@ export class AffiliateAuthService {
     }
   }
 
-  // ----------------- UPDATE PROFILE -----------------
   async updateProfile(userId: string, updateData: Partial<AffiliateUser>) {
     try {
       if (!userId) throw new CustomError(400,'User ID is required');
@@ -176,7 +170,6 @@ export class AffiliateAuthService {
     }
   }
 
-  // ----------------- HELPER -----------------
   private async sign(id: string, email: string) {
     return this.jwt.signAsync({ sub: id, email });
   }
@@ -199,11 +192,9 @@ export class AffiliateAuthService {
     const user = await this.model.findById(userId);
     if (!user) throw new CustomError(404, 'User not found');
 
-    // Validate old password
     const match = await bcrypt.compare(oldPassword, user.password);
     if (!match) throw new CustomError(401, 'Old password is incorrect');
 
-    // Hash new password and save
     const hashed = await bcrypt.hash(newPassword, 10);
     user.password = hashed;
     await user.save();

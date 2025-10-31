@@ -37,7 +37,6 @@ export class AffiliateAuthController {
    @Put('updateProfile/:id')
   updateProfile(@Param() id:any, @Body() body: any) {
     console.log(id.id,'reqyest')
-    // body can include: name, emailStatus, phone, country, whatsapp, telegram, link, description
     return this.service.updateProfile(id.id, body);
   }
 
