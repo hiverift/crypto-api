@@ -9,14 +9,20 @@ export class AdminController {
   getAll() {
     return this.service.getAllAffiliates();
   }
+  
+  @Get('affiliate/transactions')
+  getTransactions() {
+    return this.service.getTransactions();
+  }
 
   @Get('affiliate/:id')
   getDetails(@Param('id') id: string) {
     return this.service.getAffiliateDetails(id);
   }
 
-  @Get('affiliate/transactions')
-  getTransactions() {
-    return this.service.getTransactions();
+  @Get('AllDashboardDetails/:id')
+  getAffiliateDashboard(@Param('id') id: string) {
+    return this.service.getAffiliateDashboard(id);
   }
+
 }

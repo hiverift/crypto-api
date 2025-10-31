@@ -1,9 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable,NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Affiliate } from '../affiliate/schemas/affiliate.schema';
 import { AffiliateUser } from 'src/affiliate-auth/entities/affiliate-auth.entity';
-
+import CustomResponse from 'src/providers/custom-response.service';
 @Injectable()
 export class AdminService {
   constructor(
@@ -21,7 +21,7 @@ export class AdminService {
 
   const user = await this.users
     .findById(affiliate.userId)
-    .select('-password')
+    .select('0-password')
     .lean();
 
   return { affiliate, user };
@@ -33,6 +33,33 @@ export class AdminService {
       code: a.code,
       totalCommission: a.totalCommission,
       withdrawable: a.withdrawable,
+    
     }));
   }
+   async getAffiliateDashboard(id: string) {
+    console.log(id,"uijijijiij")
+    const affiliate = await this.affiliates.findOne({ userId: id }).lean();
+        console.log(affiliate,"uijijijiij")
+    if (!affiliate) {   
+      throw new NotFoundException('Affiliate not found');
+    }
+
+
+    const totalReferrals = affiliate.totalReferrals;
+    const totalCommission = affiliate.totalCommission;
+    const withdrawable = affiliate.withdrawable;
+    const totalReferralRegistered = affiliate.referredUsers.length;
+
+    return {
+      userId: affiliate.userId,
+      code: affiliate.code,
+      parentAffiliateId: affiliate.parentAffiliateId,
+      totalCommission,
+      withdrawable,
+      totalReferrals,
+      totalReferralRegistered,
+      referredUsers: affiliate.referredUsers,
+    };
+  }
+
 }

@@ -1,4 +1,4 @@
-// src/affiliate/affiliate.controller.ts
+
 import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
 import { AffiliateService } from './affiliate.service';
 import { CreateAffiliateDto } from './dto/create-affiliate.dto';
@@ -20,6 +20,7 @@ export class AffiliateController {
   @Get(':code')
   async getByCode(@Param('code') code: string) {
     return this.affiliateService.getAffiliateByCode(code);
+  
   }
 
   @Post(':affiliateId/commission')

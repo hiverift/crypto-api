@@ -17,6 +17,7 @@ import { MonitoringModule } from './monitoring/monitoring.module';
 import { AffiliateAuthModule } from './affiliate-auth/affiliate-auth.module';
 import { AdminModule } from './admin/admin.module';
 
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -35,6 +36,7 @@ import { AdminModule } from './admin/admin.module';
     GatewaysModule,
     AffiliateAuthModule,
     AdminModule,
+   
   ],
 })
 export class AppModule {}

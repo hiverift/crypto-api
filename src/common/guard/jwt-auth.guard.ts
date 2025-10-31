@@ -16,10 +16,12 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       const decoded = await this.jwtService.verifyAsync(token, {
         secret: process.env.JWT_SECRET,
       });
+      console.log()
       req.user = decoded;
       return true;
     } catch {
       return false;
+      
     }
   }
 }
