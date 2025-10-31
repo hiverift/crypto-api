@@ -1,10 +1,11 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 import { Model, Connection, Types } from 'mongoose';
 import { Transaction } from './schemas/transaction.schema';
 import CustomError from 'src/providers/customer-error.service';
 import CustomResponse from 'src/providers/custom-response.service';
 import { throwException } from 'src/util/errorhandling';
+
 @Injectable()
 export class TransactionsService {
   constructor(
@@ -12,31 +13,21 @@ export class TransactionsService {
     @InjectConnection() private conn: Connection,
   ) {}
 
-  // ✅ Start a new MongoDB session
+  // ----------------- START SESSION -----------------
   async startSession() {
     try {
       const session = await this.conn.startSession();
-      return {
-        success: true,
-        message: 'Session started successfully',
-        data: session,
-        error: null,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: 'Failed to start session',
-        data: null,
-        error: error.message,
-      };
+      return new CustomResponse(200, 'Session started successfully', session);
+    } catch (error: any) {
+      throwException(error);
     }
   }
 
-  // ✅ Record a new transaction
+  // ----------------- RECORD TRANSACTION -----------------
   async record(opts: any) {
     try {
       if (!opts.userId || !opts.asset || opts.amount === undefined || !opts.type) {
-        throw new BadRequestException('Missing required fields: userId, asset, amount, or type');
+        throw new CustomError(400, 'Missing required fields: userId, asset, amount, or type');
       }
 
       const tx = await this.txModel.create(
@@ -52,20 +43,10 @@ export class TransactionsService {
         { session: opts.session },
       );
 
-      return {
-        success: true,
-        message: 'Transaction recorded successfully',
-        data: tx[0],
-        error: null,
-      };
-    } catch (error) {
+      return new CustomResponse(201, 'Transaction recorded successfully', tx[0]);
+    } catch (error: any) {
       console.error('Transaction record error:', error.message);
-      return {
-        success: false,
-        message: 'Failed to record transaction',
-        data: null,
-        error: error.message,
-      };
+      throwException(error)
     }
   }
 }

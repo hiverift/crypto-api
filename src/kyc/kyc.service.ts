@@ -13,7 +13,7 @@ export class KycService {
   // ✅ Submit or update KYC documents
   async submit(userId: string, docs: any) {
     try {
-      if (!userId || !docs) throw new BadRequestException('User ID and documents are required');
+      if (!userId || !docs) throw new CustomError(400, 'User ID and documents are required');
 
       const kyc = await this.model.findOneAndUpdate(
         { user: userId },
@@ -21,15 +21,16 @@ export class KycService {
         { upsert: true, new: true },
       );
 
-      throw  new CustomResponse(200,"kyc update successfully",kyc)
-    } catch (error) {
-     throwException(error)
+      return new CustomResponse(200, 'KYC updated successfully', kyc);
+    } catch (error: any) {
+      throwException(error);
     }
   }
 
+  // ✅ Admin approves or rejects KYC
   async adminSetStatus(id: string, status: string, notes?: string) {
     try {
-      if (!id || !status) throw new BadRequestException('KYC ID and status are required');
+      if (!id || !status) throw new CustomError(400, 'KYC ID and status are required');
 
       const updated = await this.model.findByIdAndUpdate(
         id,
@@ -37,45 +38,29 @@ export class KycService {
         { new: true },
       );
 
-      if (!updated) throw new NotFoundException('KYC record not found');
+      if (!updated) throw new CustomError(404, 'KYC record not found');
 
-      return {
-        success: true,
-        message: `KYC ${status === 'APPROVED' ? 'approved' : 'rejected'} successfully`,
-        data: updated,
-        error: null,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: 'Failed to update KYC status',
-        data: null,
-        error: error.message,
-      };
+      return new CustomResponse(
+        200,
+        `KYC ${status === 'APPROVED' ? 'approved' : 'rejected'} successfully`,
+        updated
+      );
+    } catch (error: any) {
+      throwException(error);
     }
   }
 
   // ✅ Get KYC details for a specific user
   async getForUser(userId: string) {
     try {
-      if (!userId) throw new BadRequestException('User ID is required');
+      if (!userId) throw new CustomError(400, 'User ID is required');
 
       const kyc = await this.model.findOne({ user: userId });
-      if (!kyc) throw new NotFoundException('KYC record not found');
+      if (!kyc) throw new CustomError(404, 'KYC record not found');
 
-      return {
-        success: true,
-        message: 'KYC details fetched successfully',
-        data: kyc,
-        error: null,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: 'Failed to fetch KYC details',
-        data: null,
-        error: error.message,
-      };
+      return new CustomResponse(200, 'KYC details fetched successfully', kyc);
+    } catch (error: any) {
+      throwException(error);
     }
   }
 }

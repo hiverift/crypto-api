@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { InjectModel, InjectConnection } from '@nestjs/mongoose';
-import { Model, Connection, ClientSession } from 'mongoose';
+import { Model, Connection, ClientSession, Types } from 'mongoose';
 import { Wallet } from './schemas/wallet.schema';
 import { TransactionsService } from '../transactions/transactions.service';
 import { TxType } from '../common/enums';
@@ -16,44 +16,48 @@ export class WalletsService {
     private txs: TransactionsService,
   ) {}
 
+  // ----------------- ENSURE WALLET -----------------
   async ensureUserWallet(userId: string) {
     try {
-      const existing = await this.walletModel.findOne({ user: userId });
-      if (existing) throw new CustomResponse(200, 'Wallet found successfully', existing);
-
-      const newWallet = await this.walletModel.create({ user: userId });
-      throw new CustomResponse(201, 'Wallet created successfully', newWallet);
-    } catch (error) {
-      throwException(error);
+      let wallet = await this.walletModel.findOne({ user: userId });
+      if (!wallet) {
+        wallet = await this.walletModel.create({ user: userId });
+      }
+      return new CustomResponse(200, 'Wallet retrieved successfully', wallet);
+    } catch (err: any) {
+      throwException(err);
     }
   }
 
+  // ----------------- GET WALLET -----------------
   async getMyWallet(userId: string) {
     try {
-      const wallet = await this.walletModel.findOne({ user: userId });
-      if (!wallet) throw new NotFoundException('Wallet not found');
-
-      throw new CustomResponse(200, 'Wallet fetched successfully', wallet);
-    } catch (error) {
-      throwException(error);
+      const w = await this.walletModel.findOne({ user: userId });
+      if (!w) throw new CustomError(404, 'Wallet not found');
+      return new CustomResponse(200, 'Wallet retrieved successfully', w);
+    } catch (err: any) {
+      throwException(err);
     }
   }
+
+  // ----------------- RESERVE FUNDS -----------------
   async reserveFunds(userId: string, asset: string, amount: number, session?: ClientSession) {
     const s = session || (await this.conn.startSession());
     const ownSession = !session;
     if (ownSession) s.startTransaction();
+
     try {
       const wallet = await this.walletModel.findOne({ user: userId }).session(s);
-      if (!wallet) throw new NotFoundException('Wallet not found');
+      if (!wallet) throw new CustomError(404, 'Wallet not found');
 
-      const available = Number(wallet.balances.get(asset) || 0);
-      if (available < amount) throw new BadRequestException('Insufficient balance');
+      const avail = Number(wallet.balances.get(asset) || 0);
+      if (avail < amount) throw new CustomError(400, 'Insufficient balance');
 
-      wallet.balances.set(asset, available - amount);
+      wallet.balances.set(asset, +(avail - amount));
       const locked = Number(wallet.lockedBalances.get(asset) || 0);
-      wallet.lockedBalances.set(asset, locked + amount);
-
+      wallet.lockedBalances.set(asset, +(locked + amount));
       await wallet.save({ session: s });
+
       await this.txs.record({
         userId,
         asset,
@@ -64,31 +68,33 @@ export class WalletsService {
       });
 
       if (ownSession) await s.commitTransaction();
-      throw new CustomResponse(200, 'Funds reserved successfully', wallet);
-    } catch (error) {
+      return new CustomResponse(200, 'Funds reserved successfully', wallet);
+    } catch (err: any) {
       if (ownSession) await s.abortTransaction();
-      throwException(error);
+      throwException(err);
     } finally {
       if (ownSession) s.endSession();
     }
   }
 
+  // ----------------- RELEASE LOCKED FUNDS -----------------
   async releaseLocked(userId: string, asset: string, amount: number, session?: ClientSession) {
     const s = session || (await this.conn.startSession());
     const ownSession = !session;
     if (ownSession) s.startTransaction();
+
     try {
       const wallet = await this.walletModel.findOne({ user: userId }).session(s);
-      if (!wallet) throw new NotFoundException('Wallet not found');
+      if (!wallet) throw new CustomError(404, 'Wallet not found');
 
       const locked = Number(wallet.lockedBalances.get(asset) || 0);
-      if (locked < amount) throw new BadRequestException('Not enough locked balance');
+      if (locked < amount) throw new CustomError(400, 'Not enough locked balance');
 
-      wallet.lockedBalances.set(asset, locked - amount);
+      wallet.lockedBalances.set(asset, +(locked - amount));
       const bal = Number(wallet.balances.get(asset) || 0);
-      wallet.balances.set(asset, bal + amount);
-
+      wallet.balances.set(asset, +(bal + amount));
       await wallet.save({ session: s });
+
       await this.txs.record({
         userId,
         asset,
@@ -99,27 +105,29 @@ export class WalletsService {
       });
 
       if (ownSession) await s.commitTransaction();
-      throw new CustomResponse(200, 'Locked funds released successfully', wallet);
-    } catch (error) {
+      return new CustomResponse(200, 'Locked funds released successfully', wallet);
+    } catch (err: any) {
       if (ownSession) await s.abortTransaction();
-      throwException(error);
+      throwException(err);
     } finally {
       if (ownSession) s.endSession();
     }
   }
 
+  // ----------------- CONSUME LOCKED FUNDS -----------------
   async consumeLocked(userId: string, asset: string, amount: number, session?: ClientSession) {
     const s = session || (await this.conn.startSession());
     const ownSession = !session;
     if (ownSession) s.startTransaction();
+
     try {
       const wallet = await this.walletModel.findOne({ user: userId }).session(s);
-      if (!wallet) throw new NotFoundException('Wallet not found');
+      if (!wallet) throw new CustomError(404, 'Wallet not found');
 
       const locked = Number(wallet.lockedBalances.get(asset) || 0);
-      if (locked < amount) throw new BadRequestException('Not enough locked balance to consume');
+      if (locked < amount) throw new CustomError(400, 'Not enough locked balance to consume');
 
-      wallet.lockedBalances.set(asset, locked - amount);
+      wallet.lockedBalances.set(asset, +(locked - amount));
       await wallet.save({ session: s });
 
       await this.txs.record({
@@ -132,30 +140,30 @@ export class WalletsService {
       });
 
       if (ownSession) await s.commitTransaction();
-      throw new CustomResponse(200, 'Locked funds consumed successfully', wallet);
-    } catch (error) {
+      return new CustomResponse(200, 'Locked funds consumed successfully', wallet);
+    } catch (err: any) {
       if (ownSession) await s.abortTransaction();
-      throwException(error);
+      throwException(err);
     } finally {
       if (ownSession) s.endSession();
     }
   }
 
+  // ----------------- CREDIT FUNDS -----------------
   async credit(userId: string, asset: string, amount: number, session?: ClientSession) {
     const s = session || (await this.conn.startSession());
     const ownSession = !session;
     if (ownSession) s.startTransaction();
-    try {
-      if (!asset || !amount) throw new BadRequestException('Asset and amount are required');
 
+    try {
       const wallet = await this.walletModel.findOneAndUpdate(
         { user: userId },
         {},
-        { upsert: true, new: true, session: s },
+        { upsert: true, new: true, session: s }
       );
 
       const bal = Number(wallet.balances.get(asset) || 0);
-      wallet.balances.set(asset, bal + amount);
+      wallet.balances.set(asset, +(bal + amount));
       await wallet.save({ session: s });
 
       await this.txs.record({
@@ -168,10 +176,10 @@ export class WalletsService {
       });
 
       if (ownSession) await s.commitTransaction();
-      throw new CustomResponse(200, 'Deposit successful', wallet);
-    } catch (error) {
+      return new CustomResponse(200, 'Funds credited successfully', wallet);
+    } catch (err: any) {
       if (ownSession) await s.abortTransaction();
-      throwException(error);
+      throwException(err);
     } finally {
       if (ownSession) s.endSession();
     }
