@@ -17,17 +17,18 @@ export class OrdersService {
     private wallets: WalletsService,
     private txs: TransactionsService,
     @Inject(forwardRef(() => OrderbookService))
-    private readonly orderbook: OrderbookService
+    private readonly orderbook: OrderbookService,
   ) {}
 
   async place(userId: string, dto: any) {
     const [base, quote] = (dto.symbol || '').split('/');
-    if (!base || !quote) throw new CustomError(400, 'Invalid symbol');
+    if (!base || !quote) throw new CustomError(400, 'Invalid trading pair');
 
     const session = await this.conn.startSession();
     session.startTransaction();
 
     try {
+      // Reserve funds
       if (dto.type === 'LIMIT') {
         if (dto.side === 'BUY') {
           const cost = Number(dto.quantity) * Number(dto.price);
@@ -37,28 +38,21 @@ export class OrdersService {
         }
       }
 
-      const created = await this.orderModel.create(
-        [
-          {
-            user: new Types.ObjectId(userId),
-            ...dto,
-            filled: 0,
-            status: 'NEW',
-          },
-        ],
-        { session }
+      // Create order
+      const [order] = await this.orderModel.create(
+        [{ user: new Types.ObjectId(userId), ...dto, filled: 0, status: 'OPEN' }],
+        { session },
       );
 
       await session.commitTransaction();
-      const order = created[0];
 
-      // notify orderbook
-      await this.orderbook.onNewLimitOrder(order);
+      // Add to orderbook (asynchronously)
+      this.orderbook.onNewLimitOrder(order).catch(console.error);
 
       return new CustomResponse(201, 'Order placed successfully', order);
-    } catch (e: any) {
+    } catch (err: any) {
       await session.abortTransaction();
-      throwException(e);
+      throwException(err);
     } finally {
       session.endSession();
     }
