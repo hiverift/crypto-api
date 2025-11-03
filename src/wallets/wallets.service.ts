@@ -50,7 +50,7 @@ export class WalletsService {
       const wallet = await this.walletModel.findOne({ user: userId }).session(s);
       if (!wallet) throw new CustomError(404, 'Wallet not found');
 
-      const avail = Number(wallet.balances.get(asset) || 0);
+      const avail = Number(wallet.balances.get(asset) || 1000);
       if (avail < amount) throw new CustomError(400, 'Insufficient balance');
 
       wallet.balances.set(asset, +(avail - amount));

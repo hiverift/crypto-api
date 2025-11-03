@@ -19,6 +19,7 @@ import { AdminModule } from './admin/admin.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 
 
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -38,6 +39,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
     AffiliateAuthModule,
     AdminModule,
     AnalyticsModule,
+  
    
   ],
 })
