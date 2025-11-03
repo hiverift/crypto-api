@@ -1,13 +1,28 @@
-
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
-import { TxType } from '../../common/enums';
+import { Document } from 'mongoose';
+
 @Schema({ timestamps: true })
 export class Transaction extends Document {
-  @Prop({ type: Types.ObjectId, ref: 'User', index: true }) user: Types.ObjectId;
-  @Prop() asset: string;
-  @Prop() amount: number;
-  @Prop() type: string;
-  @Prop({ type: Object, default: {} }) meta: Record<string, any>;
+  @Prop({ required: true })
+  ownerId: string; // userId or affiliateId
+
+  @Prop({ required: true, enum: ['USER', 'AFFILIATE'] })
+  ownerType: 'USER' | 'AFFILIATE';
+
+  @Prop({ required: true })
+  asset: string; // e.g. USDT, BTC
+
+  @Prop({ required: true })
+  amount: number;
+
+  @Prop({ required: true, enum: ['DEPOSIT', 'WITHDRAW'] })
+  type: 'DEPOSIT' | 'WITHDRAW';
+
+  @Prop({ default: 'PENDING', enum: ['PENDING', 'APPROVED', 'REJECTED'] })
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+
+  @Prop({ type: Object, default: {} })
+  meta?: Record<string, any>;
 }
+
 export const TransactionSchema = SchemaFactory.createForClass(Transaction);

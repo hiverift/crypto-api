@@ -17,6 +17,8 @@ import { MonitoringModule } from './monitoring/monitoring.module';
 import { AffiliateAuthModule } from './affiliate-auth/affiliate-auth.module';
 import { AdminModule } from './admin/admin.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { TradesModule } from './trades/trades.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 
 
@@ -39,6 +41,8 @@ import { AnalyticsModule } from './analytics/analytics.module';
     AffiliateAuthModule,
     AdminModule,
     AnalyticsModule,
+    TradesModule,
+    DashboardModule,
   
    
   ],

@@ -20,10 +20,10 @@ export class WithdrawService {
     const session = await this.conn.startSession();
     session.startTransaction();
     try{
-      await this.wallets.reserveFunds(userId, asset, amount, session);
+     await this.wallets.reserveFunds(userId, 'USER', asset, amount, session);
       await this.txs.record({ userId, asset, amount: -amount, type:'WITHDRAWAL', meta:{ address: addr.address }, session });
       const tx = await this.onchain.sendToAddress(asset, addr.address, amount);
-      await this.wallets.consumeLocked(userId, asset, amount, session);
+      await this.wallets.consumeLocked(userId, 'USER', asset, amount, session);
       await session.commitTransaction();
       return { ok:true, tx };
     }catch(e){

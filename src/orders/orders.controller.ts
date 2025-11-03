@@ -7,5 +7,8 @@ import { OrdersService } from './orders.service';
 @Controller('orders')
 export class OrdersController {
   constructor(private orders: OrdersService){}
-  @Post() place(@CurrentUser() user:any, @Body() dto:any){ return this.orders.place(user.sub, dto); }
+  @Post() place(@CurrentUser() user:any, @Body() dto:any){ return this.orders.placeOrder(user.sub, dto); }
+
+
+  
 }

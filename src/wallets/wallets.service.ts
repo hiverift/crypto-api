@@ -1,187 +1,256 @@
-import { Injectable, Inject, forwardRef } from '@nestjs/common';
-import { InjectModel, InjectConnection } from '@nestjs/mongoose';
-import { Model, Connection, ClientSession, Types } from 'mongoose';
-import { Wallet } from './schemas/wallet.schema';
-import { TransactionsService } from '../transactions/transactions.service';
-import { TxType } from '../common/enums';
-import CustomError from 'src/providers/customer-error.service';
-import CustomResponse from 'src/providers/custom-response.service';
-import { throwException } from 'src/util/errorhandling';
+import { Injectable, Logger } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { ClientSession, Model } from 'mongoose';
+import { WalletBalance } from './schemas/wallet.schema';
+import { LedgerEntry } from './schemas/ledger.schema';
 
 @Injectable()
 export class WalletsService {
+  private logger = new Logger('WalletsService');
+
   constructor(
-    @InjectModel(Wallet.name) private walletModel: Model<Wallet>,
-    @InjectConnection() private conn: Connection,
-    private txs: TransactionsService,
+    @InjectModel(WalletBalance.name) private readonly balances: Model<WalletBalance>,
+    @InjectModel(LedgerEntry.name) private readonly ledger: Model<LedgerEntry>,
   ) {}
 
-  // ----------------- ENSURE WALLET -----------------
-  async ensureUserWallet(userId: string) {
-    try {
-      let wallet = await this.walletModel.findOne({ user: userId });
-      if (!wallet) {
-        wallet = await this.walletModel.create({ user: userId });
-      }
-      return new CustomResponse(200, 'Wallet retrieved successfully', wallet);
-    } catch (err: any) {
-      throwException(err);
-    }
+  // -------- Get Wallets --------
+  async getWalletsByOwner(ownerId: string, ownerType: 'USER' | 'AFFILIATE') {
+    const docs = await this.balances.find({ ownerId, ownerType }).lean().exec();
+    return { ownerId, ownerType, wallets: docs };
   }
 
-  // ----------------- GET WALLET -----------------
-  async getMyWallet(userId: string) {
-    try {
-      const w = await this.walletModel.findOne({ user: userId });
-      if (!w) throw new CustomError(404, 'Wallet not found');
-      return new CustomResponse(200, 'Wallet retrieved successfully', w);
-    } catch (err: any) {
-      throwException(err);
-    }
-  }
+  // -------- Helpers --------
+  private async getOrCreateBalance(
+    ownerId: string,
+    ownerType: 'USER' | 'AFFILIATE',
+    asset: string,
+    session?: ClientSession,
+  ) {
+    let doc = await this.balances
+      .findOne({ ownerId, ownerType, asset })
+      .session(session ?? null)
+      .exec();
 
-  // ----------------- RESERVE FUNDS -----------------
-  async reserveFunds(userId: string, asset: string, amount: number, session?: ClientSession) {
-    const s = session || (await this.conn.startSession());
-    const ownSession = !session;
-    if (ownSession) s.startTransaction();
-
-    try {
-      const wallet = await this.walletModel.findOne({ user: userId }).session(s);
-      if (!wallet) throw new CustomError(404, 'Wallet not found');
-
-      const avail = Number(wallet.balances.get(asset) || 1000);
-      if (avail < amount) throw new CustomError(400, 'Insufficient balance');
-
-      wallet.balances.set(asset, +(avail - amount));
-      const locked = Number(wallet.lockedBalances.get(asset) || 0);
-      wallet.lockedBalances.set(asset, +(locked + amount));
-      await wallet.save({ session: s });
-
-      await this.txs.record({
-        userId,
-        asset,
-        amount: 0,
-        type: TxType.TRADE,
-        meta: { action: 'reserve', amount },
-        session: s,
-      });
-
-      if (ownSession) await s.commitTransaction();
-      return new CustomResponse(200, 'Funds reserved successfully', wallet);
-    } catch (err: any) {
-      if (ownSession) await s.abortTransaction();
-      throwException(err);
-    } finally {
-      if (ownSession) s.endSession();
-    }
-  }
-
-  // ----------------- RELEASE LOCKED FUNDS -----------------
-  async releaseLocked(userId: string, asset: string, amount: number, session?: ClientSession) {
-    const s = session || (await this.conn.startSession());
-    const ownSession = !session;
-    if (ownSession) s.startTransaction();
-
-    try {
-      const wallet = await this.walletModel.findOne({ user: userId }).session(s);
-      if (!wallet) throw new CustomError(404, 'Wallet not found');
-
-      const locked = Number(wallet.lockedBalances.get(asset) || 0);
-      if (locked < amount) throw new CustomError(400, 'Not enough locked balance');
-
-      wallet.lockedBalances.set(asset, +(locked - amount));
-      const bal = Number(wallet.balances.get(asset) || 0);
-      wallet.balances.set(asset, +(bal + amount));
-      await wallet.save({ session: s });
-
-      await this.txs.record({
-        userId,
-        asset,
-        amount: 0,
-        type: TxType.TRADE,
-        meta: { action: 'release', amount },
-        session: s,
-      });
-
-      if (ownSession) await s.commitTransaction();
-      return new CustomResponse(200, 'Locked funds released successfully', wallet);
-    } catch (err: any) {
-      if (ownSession) await s.abortTransaction();
-      throwException(err);
-    } finally {
-      if (ownSession) s.endSession();
-    }
-  }
-
-  // ----------------- CONSUME LOCKED FUNDS -----------------
-  async consumeLocked(userId: string, asset: string, amount: number, session?: ClientSession) {
-    const s = session || (await this.conn.startSession());
-    const ownSession = !session;
-    if (ownSession) s.startTransaction();
-
-    try {
-      const wallet = await this.walletModel.findOne({ user: userId }).session(s);
-      if (!wallet) throw new CustomError(404, 'Wallet not found');
-
-      const locked = Number(wallet.lockedBalances.get(asset) || 0);
-      if (locked < amount) throw new CustomError(400, 'Not enough locked balance to consume');
-
-      wallet.lockedBalances.set(asset, +(locked - amount));
-      await wallet.save({ session: s });
-
-      await this.txs.record({
-        userId,
-        asset,
-        amount: -amount,
-        type: TxType.TRADE,
-        meta: { action: 'consume', amount },
-        session: s,
-      });
-
-      if (ownSession) await s.commitTransaction();
-      return new CustomResponse(200, 'Locked funds consumed successfully', wallet);
-    } catch (err: any) {
-      if (ownSession) await s.abortTransaction();
-      throwException(err);
-    } finally {
-      if (ownSession) s.endSession();
-    }
-  }
-
-  // ----------------- CREDIT FUNDS -----------------
-  async credit(userId: string, asset: string, amount: number, session?: ClientSession) {
-    const s = session || (await this.conn.startSession());
-    const ownSession = !session;
-    if (ownSession) s.startTransaction();
-
-    try {
-      const wallet = await this.walletModel.findOneAndUpdate(
-        { user: userId },
-        {},
-        { upsert: true, new: true, session: s }
+    if (!doc) {
+      const created = await this.balances.create(
+        [{ ownerId, ownerType, asset, available: 0, locked: 0 }],
+        { session },
       );
-
-      const bal = Number(wallet.balances.get(asset) || 0);
-      wallet.balances.set(asset, +(bal + amount));
-      await wallet.save({ session: s });
-
-      await this.txs.record({
-        userId,
-        asset,
-        amount,
-        type: TxType.TRADE,
-        meta: { action: 'credit', amount },
-        session: s,
-      });
-
-      if (ownSession) await s.commitTransaction();
-      return new CustomResponse(200, 'Funds credited successfully', wallet);
-    } catch (err: any) {
-      if (ownSession) await s.abortTransaction();
-      throwException(err);
-    } finally {
-      if (ownSession) s.endSession();
+      doc = created[0];
     }
+    return doc;
   }
+
+  // -------- Reserve --------
+  async reserveFunds(
+    ownerId: string,
+    ownerType: 'USER' | 'AFFILIATE',
+    asset: string,
+    amount: number,
+    session: ClientSession,
+  ) {
+    if (amount <= 0) throw new Error('Invalid amount');
+    const bal = await this.getOrCreateBalance(ownerId, ownerType, asset, session);
+    if (bal.available < amount) throw new Error('Insufficient funds');
+
+    await this.balances
+      .updateOne({ _id: bal._id }, { $inc: { available: -amount, locked: +amount } }, { session })
+      .exec();
+
+    const newBal = await this.balances.findById(bal._id).session(session ?? null).exec();
+    if (!newBal) throw new Error('Wallet not found after reserve');
+
+    await this.ledger.create(
+      [
+        {
+          ownerId,
+          ownerType,
+          asset,
+          change: -amount,
+          balanceAfter: newBal.available,
+          type: 'RESERVE',
+        },
+      ],
+      { session },
+    );
+
+    return newBal;
+  }
+
+  // -------- Release --------
+  async releaseFunds(
+    ownerId: string,
+    ownerType: 'USER' | 'AFFILIATE',
+    asset: string,
+    amount: number,
+    session?: ClientSession,
+  ) {
+    if (amount <= 0) throw new Error('Invalid amount');
+    const bal = await this.getOrCreateBalance(ownerId, ownerType, asset, session);
+    if (bal.locked < amount) throw new Error('Locked funds insufficient');
+
+    await this.balances
+      .updateOne({ _id: bal._id }, { $inc: { locked: -amount, available: +amount } }, { session })
+      .exec();
+
+    const newBal = await this.balances.findById(bal._id).session(session ?? null).exec();
+    if (!newBal) throw new Error('Wallet not found after release');
+
+    await this.ledger.create(
+      [
+        {
+          ownerId,
+          ownerType,
+          asset,
+          change: +amount,
+          balanceAfter: newBal.available,
+          type: 'RELEASE',
+        },
+      ],
+      { session },
+    );
+
+    return newBal;
+  }
+
+  // -------- Consume Locked --------
+  async consumeLocked(
+    ownerId: string,
+    ownerType: 'USER' | 'AFFILIATE',
+    asset: string,
+    amount: number,
+    session?: ClientSession,
+  ) {
+    if (amount <= 0) throw new Error('Invalid amount');
+    const bal = await this.getOrCreateBalance(ownerId, ownerType, asset, session);
+    if (bal.locked < amount) throw new Error('Locked funds insufficient');
+
+    await this.balances
+      .updateOne({ _id: bal._id }, { $inc: { locked: -amount } }, { session })
+      .exec();
+
+    const newBal = await this.balances.findById(bal._id).session(session ?? null).exec();
+    if (!newBal) throw new Error('Wallet not found after consume');
+
+    await this.ledger.create(
+      [
+        {
+          ownerId,
+          ownerType,
+          asset,
+          change: -amount,
+          balanceAfter: newBal.available,
+          type: 'CONSUME',
+        },
+      ],
+      { session },
+    );
+
+    return newBal;
+  }
+
+  // -------- Credit --------
+  async credit(
+    ownerId: string,
+    ownerType: 'USER' | 'AFFILIATE',
+    asset: string,
+    amount: number,
+    session?: ClientSession,
+  ) {
+    if (amount <= 0) throw new Error('Invalid amount');
+    const bal = await this.getOrCreateBalance(ownerId, ownerType, asset, session);
+
+    await this.balances.updateOne({ _id: bal._id }, { $inc: { available: +amount } }, { session }).exec();
+
+    const newBal = await this.balances.findById(bal._id).session(session ?? null).exec();
+    if (!newBal) throw new Error('Wallet not found after credit');
+
+    await this.ledger.create(
+      [
+        {
+          ownerId,
+          ownerType,
+          asset,
+          change: +amount,
+          balanceAfter: newBal.available,
+          type: 'CREDIT',
+        },
+      ],
+      { session },
+    );
+
+    return newBal;
+  }
+
+  // -------- Debit --------
+  async debit(
+    ownerId: string,
+    ownerType: 'USER' | 'AFFILIATE',
+    asset: string,
+    amount: number,
+    session?: ClientSession,
+  ) {
+    if (amount <= 0) throw new Error('Invalid amount');
+    const bal = await this.getOrCreateBalance(ownerId, ownerType, asset, session);
+    if (bal.available < amount) throw new Error('Insufficient funds');
+
+    await this.balances.updateOne({ _id: bal._id }, { $inc: { available: -amount } }, { session }).exec();
+
+    const newBal = await this.balances.findById(bal._id).session(session ?? null).exec();
+    if (!newBal) throw new Error('Wallet not found after debit');
+
+    await this.ledger.create(
+      [
+        {
+          ownerId,
+          ownerType,
+          asset,
+          change: -amount,
+          balanceAfter: newBal.available,
+          type: 'DEBIT',
+        },
+      ],
+      { session },
+    );
+
+    return newBal;
+  }
+
+  async getAllBalances(ownerId: string, ownerType: 'USER' | 'AFFILIATE') {
+  return this.balances.find({ ownerId, ownerType }).lean().exec();
+}
+
+async lockFunds(userId: string, asset: string, amount: number, lockKey: string, session?: ClientSession) {
+  const bal = await this.balances.findOneAndUpdate(
+    { ownerId: userId, asset },
+    { $inc: { locked: amount, available: -amount } },
+    { new: true, upsert: true, session }
+  );
+  await this.ledger.create([{ ownerId: userId, asset, change: -amount, balanceAfter: bal.available, type: 'LOCK', meta: { lockKey } }]);
+  return bal;
+}
+
+async releaseLocked(userId: string, asset: string, lockKey: string, session?: ClientSession) {
+  const bal = await this.balances.findOneAndUpdate(
+    { ownerId: userId, asset },
+    { $inc: { locked: -1, available: +1 } }, // Example adjustment
+    { new: true, session }
+  );
+ if (!bal) {
+  throw new Error(`Wallet balance not found for ${userId} ${asset}`);
+}
+
+await this.ledger.create([
+  {
+    ownerId: userId,
+    asset,
+    change: +1,
+    balanceAfter: bal.available,
+    type: 'RELEASE',
+    meta: { lockKey },
+  },
+]);
+
+  return bal;
+}
 }

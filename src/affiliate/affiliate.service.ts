@@ -176,6 +176,20 @@ export class AffiliateService {
       return { success: false, message: 'Error fetching sub affiliates', error: error.message };
     }
   }
+async getTotalCommissionStats(userId: string) {
+  // यहाँ future में तू commission model से aggregate कर सकता है
+  return {
+    totalCommission: 0,
+    totalReferrals: 0,
+    referredUsers: [],
+  };
+}
+
+async handleTradeCommission(takerId: string, makerId: string, amount: number) {
+  console.log(`💰 Commission handled | taker=${takerId}, maker=${makerId}, amount=${amount}`);
+  // future: calculate and credit affiliate commission
+  return true;
+}
 
 
 }

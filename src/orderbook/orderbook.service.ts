@@ -266,4 +266,11 @@ export class OrderbookService {
       this.logger.debug('AffiliateService.handleTradeCommission not implemented - skipping');
     }
   }
+
+  async removeOrderFromBook(orderId: string, symbol: string) {
+  const book = await this.ensureBook(symbol);
+  book.bids = book.bids.filter(b => b.orderId !== orderId);
+  book.asks = book.asks.filter(a => a.orderId !== orderId);
+  await this.persistBookSnapshot(symbol, book);
+}
 }

@@ -1,65 +1,80 @@
-import { Injectable,NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Affiliate } from '../affiliate/schemas/affiliate.schema';
 import { AffiliateUser } from 'src/affiliate-auth/entities/affiliate-auth.entity';
 import CustomResponse from 'src/providers/custom-response.service';
+
 @Injectable()
 export class AdminService {
   constructor(
-    @InjectModel(Affiliate.name) private affiliates: Model<Affiliate>,
-    @InjectModel(AffiliateUser.name) private users: Model<AffiliateUser>,
+    @InjectModel(Affiliate.name) private readonly affiliates: Model<Affiliate>,
+    @InjectModel(AffiliateUser.name) private readonly affiliateUsers: Model<AffiliateUser>,
   ) {}
 
+  // ✅ Get all affiliates list
   async getAllAffiliates() {
-    return this.affiliates.find();
+    const all = await this.affiliates.find().sort({ createdAt: -1 }).lean();
+    return new CustomResponse(200, 'All affiliates fetched successfully', all);
   }
 
- async getAffiliateDetails(id: string) {
-  const affiliate = await this.affiliates.findById(id);
-  if (!affiliate) throw new Error('Affiliate not found');
+  // ✅ Get details of single affiliate + linked user
+  async getAffiliateDetails(id: string) {
+    const affiliate = await this.affiliates.findById(id).lean();
+    if (!affiliate) throw new NotFoundException('Affiliate not found');
 
-  const user = await this.users
-    .findById(affiliate.userId)
-    .select('0-password')
-    .lean();
+    const user = await this.affiliateUsers.findById(affiliate.userId)
+      .select('-password')
+      .lean();
 
-  return { affiliate, user };
- }
+    return new CustomResponse(200, 'Affiliate details retrieved', { affiliate, user });
+  }
 
+  // ✅ Get transactions summary of all affiliates
   async getTransactions() {
-    const affiliates = await this.affiliates.find();
-    return affiliates.map(a => ({
+    const affiliates = await this.affiliates.find().lean();
+
+    const transactions = affiliates.map((a) => ({
       code: a.code,
-      totalCommission: a.totalCommission,
-      withdrawable: a.withdrawable,
-    
+      totalCommission: a.totalCommission || 0,
+      withdrawable: a.withdrawable || 0,
+      totalReferrals: a.totalReferrals || 0,
+      referredCount: (a.referredUsers || []).length,
     }));
+
+    return new CustomResponse(200, 'Affiliate transaction summary', transactions);
   }
-   async getAffiliateDashboard(id: string) {
-    console.log(id,"uijijijiij")
-    const affiliate = await this.affiliates.findOne({ userId: id }).lean();
-        console.log(affiliate,"uijijijiij")
-    if (!affiliate) {   
-      throw new NotFoundException('Affiliate not found');
-    }
 
+  // ✅ Get dashboard data for a specific affiliate by userId
+  async getAffiliateDashboard(userId: string) {
+    const affiliate = await this.affiliates.findOne({ userId }).lean();
+    if (!affiliate) throw new NotFoundException('Affiliate not found');
 
-    const totalReferrals = affiliate.totalReferrals;
-    const totalCommission = affiliate.totalCommission;
-    const withdrawable = affiliate.withdrawable;
-    const totalReferralRegistered = affiliate.referredUsers.length;
-
-    return {
+    const dashboard = {
       userId: affiliate.userId,
       code: affiliate.code,
       parentAffiliateId: affiliate.parentAffiliateId,
-      totalCommission,
-      withdrawable,
-      totalReferrals,
-      totalReferralRegistered,
-      referredUsers: affiliate.referredUsers,
+      totalCommission: affiliate.totalCommission || 0,
+      withdrawable: affiliate.withdrawable || 0,
+      totalReferrals: affiliate.totalReferrals || 0,
+      totalReferralRegistered: (affiliate.referredUsers || []).length,
+      referredUsers: affiliate.referredUsers || [],
+      createdAt: affiliate.createdAt,
+      updatedAt: affiliate.updatedAt,
     };
+
+    return new CustomResponse(200, 'Affiliate dashboard data fetched', dashboard);
   }
 
+  // ✅ Optional: get top affiliates by commission
+  async getTopAffiliates(limit = 10) {
+    const top = await this.affiliates
+      .find()
+      .sort({ totalCommission: -1 })
+      .limit(limit)
+      .select('code totalCommission totalReferrals withdrawable')
+      .lean();
+
+    return new CustomResponse(200, 'Top affiliates fetched', top);
+  }
 }

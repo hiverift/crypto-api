@@ -1,21 +1,25 @@
-import { Controller, Post, Body, UseGuards, Get } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
+import { WalletsService } from './wallets.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { CurrentUser } from '../common/current-user.decorator';
-import { WalletsService } from './wallets.service';
 
 @UseGuards(JwtAuthGuard)
 @Controller('wallets')
 export class WalletsController {
-  constructor(private wallets: WalletsService) {}
+  constructor(private readonly wallets: WalletsService) {}
 
+  // GET /wallets/me
   @Get('me')
-  async me(@CurrentUser() user: any) {
-    return this.wallets.getMyWallet(user.sub);
+  async myWallets(@CurrentUser() user: any) {
+    const ownerType = user.role === 'AFFILIATE' ? 'AFFILIATE' : 'USER';
+    return this.wallets.getWalletsByOwner(user.sub, ownerType);
   }
 
-  @Post('deposit')
-  async deposit(@CurrentUser() user: any, @Body() body: any) {
+  // POST /wallets/credit
+  @Post('credit')
+  async credit(@CurrentUser() user: any, @Body() body: { asset: string; amount: number }) {
     const { asset, amount } = body;
-    return this.wallets.credit(user.sub, asset, Number(amount));
+    const ownerType = user.role === 'AFFILIATE' ? 'AFFILIATE' : 'USER';
+    return this.wallets.credit(user.sub, ownerType, asset, Number(amount));
   }
 }

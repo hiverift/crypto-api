@@ -19,7 +19,7 @@ export class Affiliate extends Document {
   @Prop({ type: [String], default: [] })
   subAffiliates: string[];
   @Prop({ default: 0 })
-  
+
   totalCommission: number;
 
   @Prop({ default: 0 })
@@ -27,6 +27,10 @@ export class Affiliate extends Document {
 
   @Prop({ type: [String], default: [] })
   referredUsers: string[];
+
+  createdAt?: Date;
+  updatedAt?: Date;
+  
 }
 
 export const AffiliateSchema = SchemaFactory.createForClass(Affiliate);
