@@ -25,7 +25,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    MongooseModule.forRoot(process.env.MONGO_URI || 'mongodb+srv://rs5045280:xbpneTRReMJD9LAc@cluster0.sbbouj5.mongodb.net/crypto_api'),
+    MongooseModule.forRoot(process.env.MONGO_URI || 'mongodb+srv://rs5045280:xbpneTRReMJD9LAc@cluster0.sbbouj5.mongodb.net/crypto_api_v1'),
     MonitoringModule,
     UsersModule,
     AuthModule,
