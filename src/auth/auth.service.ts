@@ -33,7 +33,7 @@ export class AuthService {
 
       const ok = await bcrypt.compare(dto.password, user.password);
       if (!ok) throw new CustomError(401, 'Invalid credentials');
-
+       console.log(user._id,"dindoendoneondoneodoneeoooeooo")
       const token = await this.sign(user._id.toString(), user.email);
 
       if ('password' in user) delete user.password;

@@ -11,7 +11,7 @@ export class WalletsService {
   constructor(
     @InjectModel(WalletBalance.name) private readonly balances: Model<WalletBalance>,
     @InjectModel(LedgerEntry.name) private readonly ledger: Model<LedgerEntry>,
-  ) {}
+  ) { }
 
   // -------- Get Wallets --------
   async getWalletsByOwner(ownerId: string, ownerType: 'USER' | 'AFFILIATE') {
@@ -217,40 +217,40 @@ export class WalletsService {
   }
 
   async getAllBalances(ownerId: string, ownerType: 'USER' | 'AFFILIATE') {
-  return this.balances.find({ ownerId, ownerType }).lean().exec();
-}
+    return this.balances.find({ ownerId, ownerType }).lean().exec();
+  }
 
-async lockFunds(userId: string, asset: string, amount: number, lockKey: string, session?: ClientSession) {
-  const bal = await this.balances.findOneAndUpdate(
-    { ownerId: userId, asset },
-    { $inc: { locked: amount, available: -amount } },
-    { new: true, upsert: true, session }
-  );
-  await this.ledger.create([{ ownerId: userId, asset, change: -amount, balanceAfter: bal.available, type: 'LOCK', meta: { lockKey } }]);
-  return bal;
-}
+  async lockFunds(userId: string, asset: string, amount: number, lockKey: string, session?: ClientSession) {
+    const bal = await this.balances.findOneAndUpdate(
+      { ownerId: userId, asset },
+      { $inc: { locked: amount, available: -amount } },
+      { new: true, upsert: true, session }
+    );
+    await this.ledger.create([{ ownerId: userId, asset, change: -amount, balanceAfter: bal.available, type: 'LOCK', meta: { lockKey } }]);
+    return bal;
+  }
 
-async releaseLocked(userId: string, asset: string, lockKey: string, session?: ClientSession) {
-  const bal = await this.balances.findOneAndUpdate(
-    { ownerId: userId, asset },
-    { $inc: { locked: -1, available: +1 } }, // Example adjustment
-    { new: true, session }
-  );
- if (!bal) {
-  throw new Error(`Wallet balance not found for ${userId} ${asset}`);
-}
+  async releaseLocked(userId: string, asset: string, lockKey: string, session?: ClientSession) {
+    const bal = await this.balances.findOneAndUpdate(
+      { ownerId: userId, asset },
+      { $inc: { locked: -1, available: +1 } }, // Example adjustment
+      { new: true, session }
+    );
+    if (!bal) {
+      throw new Error(`Wallet balance not found for ${userId} ${asset}`);
+    }
 
-await this.ledger.create([
-  {
-    ownerId: userId,
-    asset,
-    change: +1,
-    balanceAfter: bal.available,
-    type: 'RELEASE',
-    meta: { lockKey },
-  },
-]);
+    await this.ledger.create([
+      {
+        ownerId: userId,
+        asset,
+        change: +1,
+        balanceAfter: bal.available,
+        type: 'RELEASE',
+        meta: { lockKey },
+      },
+    ]);
 
-  return bal;
-}
+    return bal;
+  }
 }

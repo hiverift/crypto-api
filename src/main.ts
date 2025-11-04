@@ -16,7 +16,6 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
    dotenv.config();
   app.setGlobalPrefix('api');
-
   app.use(helmet()); 
     const port = parseInt(config.get<string>('PORT') ?? '4000', 10);
     const nodeEnv = config.get<string>('NODE_ENV') ?? 'development';
@@ -61,6 +60,7 @@ async function bootstrap() {
     });  
 
   app.use(
+    
     expressWinston.logger({
       winstonInstance: winston.createLogger({
         level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
@@ -77,6 +77,6 @@ async function bootstrap() {
   
   await app.listen(port);
   logger.log(`Server listening on ${port}`);
-    
+
 }
 bootstrap();
