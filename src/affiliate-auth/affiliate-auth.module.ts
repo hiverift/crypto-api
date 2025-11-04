@@ -19,7 +19,7 @@ import { AffiliateModule } from 'src/affiliate/affiliate.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        secret: config.get<string>('JWT_SECRET') || 'supersecret', 
+        secret: config.get<string>('JWT_ACCESS_SECRET') || 'dev', 
         signOptions: { expiresIn: '7d' },
       }),
     }),

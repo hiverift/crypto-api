@@ -117,7 +117,7 @@ export class AffiliateAuthService {
 
       const match = await bcrypt.compare(password, user.password);
       if (!match) throw new CustomError(401,'Invalid credentials');
-
+      console.log(user.id,email)
       const token = await this.sign(user.id, email);
 
       const affiliate = await this.AffiliateModel.findOne({ userId: user.id.toString() }).lean().exec();

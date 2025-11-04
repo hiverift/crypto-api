@@ -6,6 +6,7 @@ import { WalletBalance, WalletBalanceSchema } from './schemas/wallet.schema';
 import { LedgerEntry, LedgerEntrySchema } from './schemas/ledger.schema';
 import { UsersModule } from '../users/users.module';
 import { TransactionsModule } from '../transactions/transactions.module';
+import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { TransactionsModule } from '../transactions/transactions.module';
     ]),
     forwardRef(() => UsersModule),
     TransactionsModule,
+    AuthModule
   ],
   controllers: [WalletsController],
   providers: [WalletsService],
