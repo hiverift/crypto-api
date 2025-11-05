@@ -6,6 +6,7 @@ import { OrdersModule } from '../orders/orders.module';
 import { WalletsModule } from '../wallets/wallets.module';
 import { TransactionsModule } from '../transactions/transactions.module';
 import { AffiliateModule } from '../affiliate/affiliate.module';
+import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { AffiliateModule } from '../affiliate/affiliate.module';
     WalletsModule,
     TransactionsModule,
     AffiliateModule,
+    AuthModule
   ],
   providers: [OrderbookService],
   exports: [OrderbookService], // export if OrdersModule needs to inject it

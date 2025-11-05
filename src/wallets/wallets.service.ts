@@ -11,10 +11,10 @@ export class WalletsService {
   constructor(
     @InjectModel(WalletBalance.name) private readonly balances: Model<WalletBalance>,
     @InjectModel(LedgerEntry.name) private readonly ledger: Model<LedgerEntry>,
-  ) { }
+  ) {}
 
   // -------- Get Wallets --------
-  async getWalletsByOwner(ownerId: string, ownerType: 'USER' | 'AFFILIATE') {
+  async getWalletsByOwner(ownerId: string, ownerType: 'USER' | 'AFFILIATE' = 'USER') {
     const docs = await this.balances.find({ ownerId, ownerType }).lean().exec();
     return { ownerId, ownerType, wallets: docs };
   }
@@ -22,7 +22,7 @@ export class WalletsService {
   // -------- Helpers --------
   private async getOrCreateBalance(
     ownerId: string,
-    ownerType: 'USER' | 'AFFILIATE',
+    ownerType: 'USER' | 'AFFILIATE' = 'USER',
     asset: string,
     session?: ClientSession,
   ) {
@@ -44,7 +44,7 @@ export class WalletsService {
   // -------- Reserve --------
   async reserveFunds(
     ownerId: string,
-    ownerType: 'USER' | 'AFFILIATE',
+    ownerType: 'USER' | 'AFFILIATE' = 'USER',
     asset: string,
     amount: number,
     session: ClientSession,
@@ -80,7 +80,7 @@ export class WalletsService {
   // -------- Release --------
   async releaseFunds(
     ownerId: string,
-    ownerType: 'USER' | 'AFFILIATE',
+    ownerType: 'USER' | 'AFFILIATE' = 'USER',
     asset: string,
     amount: number,
     session?: ClientSession,
@@ -116,7 +116,7 @@ export class WalletsService {
   // -------- Consume Locked --------
   async consumeLocked(
     ownerId: string,
-    ownerType: 'USER' | 'AFFILIATE',
+    ownerType: 'USER' | 'AFFILIATE' = 'USER',
     asset: string,
     amount: number,
     session?: ClientSession,
@@ -152,7 +152,7 @@ export class WalletsService {
   // -------- Credit --------
   async credit(
     ownerId: string,
-    ownerType: 'USER' | 'AFFILIATE',
+    ownerType: 'USER' | 'AFFILIATE' = 'USER',
     asset: string,
     amount: number,
     session?: ClientSession,
@@ -185,7 +185,7 @@ export class WalletsService {
   // -------- Debit --------
   async debit(
     ownerId: string,
-    ownerType: 'USER' | 'AFFILIATE',
+    ownerType: 'USER' | 'AFFILIATE' = 'USER',
     asset: string,
     amount: number,
     session?: ClientSession,
@@ -216,33 +216,56 @@ export class WalletsService {
     return newBal;
   }
 
-  async getAllBalances(ownerId: string, ownerType: 'USER' | 'AFFILIATE') {
-    return this.balances.find({ ownerId, ownerType }).lean().exec();
-  }
-
-  async lockFunds(userId: string, asset: string, amount: number, lockKey: string, session?: ClientSession) {
+  // -------- Lock Funds --------
+  async lockFunds(
+    ownerId: string,
+    ownerType: 'USER' | 'AFFILIATE' = 'USER',
+    asset: string,
+    amount: number,
+    lockKey: string,
+    session?: ClientSession
+  ) {
     const bal = await this.balances.findOneAndUpdate(
-      { ownerId: userId, asset },
+      { ownerId, ownerType, asset },
       { $inc: { locked: amount, available: -amount } },
       { new: true, upsert: true, session }
     );
-    await this.ledger.create([{ ownerId: userId, asset, change: -amount, balanceAfter: bal.available, type: 'LOCK', meta: { lockKey } }]);
-    return bal;
-  }
-
-  async releaseLocked(userId: string, asset: string, lockKey: string, session?: ClientSession) {
-    const bal = await this.balances.findOneAndUpdate(
-      { ownerId: userId, asset },
-      { $inc: { locked: -1, available: +1 } }, // Example adjustment
-      { new: true, session }
-    );
-    if (!bal) {
-      throw new Error(`Wallet balance not found for ${userId} ${asset}`);
-    }
 
     await this.ledger.create([
       {
-        ownerId: userId,
+        ownerId,
+        ownerType,
+        asset,
+        change: -amount,
+        balanceAfter: bal.available,
+        type: 'LOCK',
+        meta: { lockKey },
+      },
+    ]);
+
+    return bal;
+  }
+
+  // -------- Release Locked --------
+  async releaseLocked(
+    ownerId: string,
+    ownerType: 'USER' | 'AFFILIATE' = 'USER',
+    asset: string,
+    lockKey: string,
+    session?: ClientSession
+  ) {
+    const bal = await this.balances.findOneAndUpdate(
+      { ownerId, ownerType, asset },
+      { $inc: { locked: -1, available: +1 } },
+      { new: true, session }
+    );
+
+    if (!bal) throw new Error(`Wallet balance not found for ${ownerId} ${asset}`);
+
+    await this.ledger.create([
+      {
+        ownerId,
+        ownerType,
         asset,
         change: +1,
         balanceAfter: bal.available,
@@ -252,5 +275,10 @@ export class WalletsService {
     ]);
 
     return bal;
+  }
+
+  // -------- Get All Balances --------
+  async getAllBalances(ownerId: string, ownerType: 'USER' | 'AFFILIATE' = 'USER') {
+    return this.balances.find({ ownerId, ownerType }).lean().exec();
   }
 }

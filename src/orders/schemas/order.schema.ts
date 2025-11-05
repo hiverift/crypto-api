@@ -1,7 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Schema as MongooseSchema, Types } from 'mongoose';
 import { OrderSide, OrderType, OrderStatus } from '../../common/enums';
-
 @Schema({ timestamps: true })
 export class Order extends Document {
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', index: true })
@@ -28,7 +27,10 @@ export class Order extends Document {
   @Prop({ default: 'NEW', enum: ['NEW', 'OPEN', 'FILLED', 'CANCELLED'] })
   status: OrderStatus | string;
 
-  // ← IMPORTANT: explicitly set meta type to Mixed (arbitrary object)
+  // ⚡ add expiry field
+  @Prop({ type: Date, required: true })
+  expiry: Date;
+
   @Prop({ type: MongooseSchema.Types.Mixed, default: {} })
   meta?: Record<string, any>;
 }

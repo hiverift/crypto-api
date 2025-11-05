@@ -13,7 +13,7 @@ export class AuthService {
   async register(dto: any) {
     try {
       const u: any = await this.users.create(dto); 
-      const token = await this.sign(u._id.toString(), u.email);
+      const token = await this.sign(u.id.toString(), u.email);
 
       return new CustomResponse(201, 'User registered successfully', {
         user: u,
@@ -26,15 +26,16 @@ export class AuthService {
 
   async login(dto: { email: string; password: string }) {
     try {
+      console.log('email.',dto.email)
       const response: any = await this.users.findByEmail(dto.email, true); 
-      const user = response.data; 
+      const user = response.result; 
 
       if (!user) throw new CustomError(401, 'Invalid credentials');
 
       const ok = await bcrypt.compare(dto.password, user.password);
       if (!ok) throw new CustomError(401, 'Invalid credentials');
-       console.log(user._id,"dindoendoneondoneodoneeoooeooo")
-      const token = await this.sign(user._id.toString(), user.email);
+      console.log('l',user.id)
+       const token = await this.sign(user.id, dto.email);
 
       if ('password' in user) delete user.password;
 

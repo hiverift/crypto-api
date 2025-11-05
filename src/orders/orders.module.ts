@@ -6,12 +6,13 @@ import { OrdersController } from './orders.controller';
 import { WalletsModule } from '../wallets/wallets.module';
 import { TransactionsModule } from '../transactions/transactions.module';
 import { OrderbookModule } from '../orderbook/orderbook.module';
-
+import { AuthModule } from 'src/auth/auth.module';
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Order.name, schema: OrderSchema }]),
     WalletsModule,
     TransactionsModule,
+    AuthModule,
     forwardRef(() => OrderbookModule), // allow circular ref
   ],
   providers: [OrdersService],
