@@ -94,70 +94,44 @@ export class DashboardService {
    * 🤝 Affiliate Earnings Summary
    */
   async getAffiliateEarnings(userId: string) {
-    try {
-      const affiliateResp = await this.affiliates.getTotalCommissionStats(userId);
-      const affiliate = affiliateResp?.result || affiliateResp?.data || affiliateResp || {};
-      return new CustomResponse(200, 'Affiliate earnings fetched successfully', affiliate);
-    } catch (err) {
-      this.logger.error('Error fetching affiliate earnings', err);
-      throwException(err);
-    }
+    const affiliate = await this.affiliates.getTotalCommissionStats(userId);
+    return affiliate;
   }
 
-  /**
-   * 📑 Orders Overview (Active + Completed)
-   */
-  async getOrderSummary(userId: string) {
-    try {
-      const orderResp = await this.orders.getUserOrders?.(userId);
-      const allOrders = orderResp?.result || orderResp?.data || orderResp || [];
+  // 📑 Active + Completed Orders Overview
+  // async getOrderSummary(userId: string) {
+  //   const allOrders = await this.orders.getUserOrders?.(userId);
+  //  const openOrders = allOrders?.filter((o) => String(o.status) === 'NEW' || String(o.status) === 'OPEN') || [];
 
-      const openOrders =
-        allOrders?.filter(
-          (o) =>
-            String(o.status) === 'NEW' ||
-            String(o.status) === 'OPEN',
-        ) || [];
 
-      const completedOrders =
-        allOrders?.filter((o) => String(o.status) === 'FILLED') || [];
 
-      return new CustomResponse(200, 'Order summary fetched successfully', {
-        totalOrders: allOrders.length || 0,
-        open: openOrders.length,
-        completed: completedOrders.length,
-      });
-    } catch (err) {
-      this.logger.error('Error fetching order summary', err);
-      throwException(err);
-    }
-  }
+  //   const completedOrders = allOrders?.filter((o) => o.status === 'FILLED') || [];
+  //   return {
+  //     totalOrders: allOrders?.length || 0,
+  //     open: openOrders.length,
+  //     completed: completedOrders.length,
+  //   };
+  // }
 
   /**
    * 📈 Full Combined Dashboard
    */
   async getFullDashboard(userId: string) {
-    try {
-      const [portfolioResp, pnlResp, feesResp, affiliateResp] = await Promise.all([
-        this.getPortfolio(userId),
-        this.getPnL(userId),
-        this.getFeeSummary(userId),
-        this.getAffiliateEarnings(userId),
-        // this.getOrderSummary(userId),
-      ]);
+    const [portfolio, pnl, fees, affiliate] = await Promise.all([
+      this.getPortfolio(userId),
+      this.getPnL(userId),
+      this.getFeeSummary(userId),
+      this.getAffiliateEarnings(userId),
+      // this.getOrderSummary(userId),
+    ]);
 
-      const data = {
-        userId,
-        portfolio: portfolioResp.result || portfolioResp.data || portfolioResp,
-        pnl: pnlResp.result || pnlResp.data || pnlResp,
-        fees: feesResp.result || feesResp.data || feesResp,
-        affiliate: affiliateResp.result || affiliateResp.data || affiliateResp,
-      };
-
-      return new CustomResponse(200, 'Full dashboard data fetched successfully', data);
-    } catch (err) {
-      this.logger.error('Error fetching full dashboard', err);
-      throwException(err);
-    }
+    return {
+      userId,
+      ...portfolio,
+      pnl,
+      fees,
+      affiliate,
+    
+    };
   }
 }
