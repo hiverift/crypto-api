@@ -23,7 +23,7 @@ export class DashboardService {
   async getPortfolio(userId: string) {
     try {
       const walletResp = await this.wallets.getAllBalances(userId, 'USER');
-      const balances = walletResp?.result || walletResp?.data || walletResp || [];
+      const balances = walletResp || walletResp || walletResp || [];
       const totalValue = balances.reduce(
         (acc, w) => acc + ((w.available || 0) + (w.locked || 0)),
         0,
@@ -44,7 +44,7 @@ export class DashboardService {
   async getPnL(userId: string) {
     try {
       const tradeResp = await this.trades.getUserTrades(userId);
-      const trades = tradeResp?.result || tradeResp?.data || tradeResp || [];
+      const trades = tradeResp || tradeResp || tradeResp || [];
 
       let totalBuy = 0;
       let totalSell = 0;
@@ -73,7 +73,7 @@ export class DashboardService {
   async getFeeSummary(userId: string) {
     try {
       const tradeResp = await this.trades.getUserTrades(userId);
-      const trades = tradeResp?.result || tradeResp?.data || tradeResp || [];
+      const trades = tradeResp || tradeResp || tradeResp || [];
 
       let totalFees = 0;
       for (const t of trades) {
