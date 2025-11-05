@@ -99,30 +99,30 @@ export class DashboardService {
   }
 
   // 📑 Active + Completed Orders Overview
-  // async getOrderSummary(userId: string) {
-  //   const allOrders = await this.orders.getUserOrders?.(userId);
-  //  const openOrders = allOrders?.filter((o) => String(o.status) === 'NEW' || String(o.status) === 'OPEN') || [];
+  async getOrderSummary(userId: string) {
+    const allOrders = await this.orders.getUserOrders?.(userId);
+   const openOrders = allOrders.orders?.filter((o) => String(o.status) === 'NEW' || String(o.status) === 'OPEN') || [];
 
 
 
-  //   const completedOrders = allOrders?.filter((o) => o.status === 'FILLED') || [];
-  //   return {
-  //     totalOrders: allOrders?.length || 0,
-  //     open: openOrders.length,
-  //     completed: completedOrders.length,
-  //   };
-  // }
+    const completedOrders = allOrders.orders?.filter((o) => o.status === 'FILLED') || [];
+    return {
+      totalOrders: allOrders.orders?.length || 0,
+      open: openOrders.length,
+      completed: completedOrders.length,
+    };
+  }
 
   /**
    * 📈 Full Combined Dashboard
    */
   async getFullDashboard(userId: string) {
-    const [portfolio, pnl, fees, affiliate] = await Promise.all([
+    const [portfolio, pnl, fees, affiliate,orders] = await Promise.all([
       this.getPortfolio(userId),
       this.getPnL(userId),
       this.getFeeSummary(userId),
       this.getAffiliateEarnings(userId),
-      // this.getOrderSummary(userId),
+       this.getOrderSummary(userId),
     ]);
 
     return {
@@ -131,6 +131,7 @@ export class DashboardService {
       pnl,
       fees,
       affiliate,
+      orders
     
     };
   }
