@@ -83,7 +83,7 @@ export class OrderbookService {
       createdAt: order.createdAt ? new Date(order.createdAt) : new Date(),
       ...((order as any).extras || {}),
     };
-
+    console.log('convet incoming order ',order.side)
     if ((order as any).side === 'BUY' || (order.side ?? order.type) === 'BUY') {
       book.bids.push(entry);
       book.bids.sort((a, b) => {
@@ -110,16 +110,18 @@ export class OrderbookService {
   // core match loop (keeps matching while top bid >= top ask)
   async match(symbol: string) {
     const book = await this.ensureBook(symbol);
+    console.log('get booking in core mathc',book)
     if (!book) return;
 
     const trades: TradeRecord[] = [];
-
-    while (book.bids.length > 0 && book.asks.length > 0) {
+   console.log(book.bids.length,"book bids length")
+    while (book.bids.length > 0 || book.asks.length > 0) {
+      console.log('bid',book.bids[0])
       const bid = book.bids[0];
       const ask = book.asks[0];
-
+      
       if (!bid || !ask) break;
-
+      
       // price-time priority: match only if bid.price >= ask.price
       if ((Number(bid.price) || 0) < (Number(ask.price) || 0)) break;
 
@@ -146,6 +148,7 @@ export class OrderbookService {
 
       // attempt atomic wallet/txs/affiliate operations
       try {
+        console.log("attempt atomic wallet/txs/affiliate operations",bid, ask, qty, price, symbol)
         await this.executeTradeHandlers(bid, ask, qty, price, symbol);
       } catch (err) {
         // if wallet/tx failed we should **rollback** or mark for manual reconciliation.

@@ -4,7 +4,7 @@ import { Document } from 'mongoose';
 @Schema({ timestamps: true })
 export class Trade extends Document {
   @Prop({ required: true })
-  symbol: string; // e.g. BTC/USDT
+  symbol: string; 
 
   @Prop({ required: true })
   price: number;
@@ -34,7 +34,7 @@ export class Trade extends Document {
   takerFee: number;
 
   @Prop({ default: 'TRADE' })
-  type: string; // TRADE
+  type: string;
 
   @Prop({ type: Object, default: {} })
   meta?: Record<string, any>;

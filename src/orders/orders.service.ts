@@ -70,7 +70,7 @@ export class OrdersService {
       await this.wallets.lockFunds(userId, 'USER', base, quantity, lockKey);
     }
 
-
+    console.log('coming in on new limti order',orderDoc)
     await this.orderbook.onNewLimitOrder(orderDoc);
 
     return {
